@@ -26,7 +26,7 @@ export default function App() {
   }, [])
 
   return (
-    <SafeAreaView style={{flex: 1}}>
+    <SafeAreaView style={{flex: 1, backgroundColor: 'white'}}>
       <ScrollView style={{flex: 1, paddingHorizontal: 10}}>
         <View style={{gap: 20, paddingBottom: 200}}>
           <RNText style={styles.header}>React Native UITextView Example</RNText>
@@ -56,8 +56,35 @@ export default function App() {
             <RNText style={styles.subheader}>
               RN-UITextView, highlightable
             </RNText>
-            <Text selectable uiTextView style={styles.text}>
+            <Text
+              selectable
+              uiTextView
+              onTextLayout={({nativeEvent}) => {
+                console.log(nativeEvent)
+              }}
+              menuItems={[
+                {
+                  title: 'Actions',
+                  children: [
+                    {
+                      title: 'Add to collection',
+                      action: 'add2collection'
+                    },
+                    {
+                      title: 'Share',
+                      action: 'share'
+                    }
+                  ]
+                }
+              ]}
+              onMenuItemPress={({nativeEvent}) => {
+                console.log(nativeEvent.actionName)
+              }}>
               Hello world!
+              <Text>
+                Second string!
+                <Text>Third string!</Text>
+              </Text>
             </Text>
           </View>
 

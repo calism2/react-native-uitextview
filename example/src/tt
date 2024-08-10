@@ -1,8 +1,8 @@
 
-class RNUITextView: UIView, UIGestureRecognizerDelegate, UITextViewDelegate   {
+class RNUITextView: UIView, UIGestureRecognizerDelegate, UITextViewDelegate{
     let bridge: RCTBridge
     let textView: UITextView
-    
+
     @objc var numberOfLines: Int = 0 {
         didSet {
             textView.textContainer.maximumNumberOfLines = numberOfLines
@@ -18,10 +18,7 @@ class RNUITextView: UIView, UIGestureRecognizerDelegate, UITextViewDelegate   {
             textView.textContainer.lineBreakMode = self.getLineBreakMode()
         }
     }
-    @objc var onTextLayout: RCTDirectEventBlock?
-    @objc var onMenuItemPress:RCTDirectEventBlock?
-    
-    
+
     private var menuteItemsDecoded  : [MenuItem] = []
     @objc var menuItems: [[String:Any]] = [] {
         didSet{
@@ -29,7 +26,7 @@ class RNUITextView: UIView, UIGestureRecognizerDelegate, UITextViewDelegate   {
                 print("Failed to convert menuItems to JSON data")
                 return
             }
-            
+
             // Decode the JSON data
             let decoder = JSONDecoder()
             do {
@@ -38,10 +35,10 @@ class RNUITextView: UIView, UIGestureRecognizerDelegate, UITextViewDelegate   {
             } catch {
                 print("Failed to decode JSON data: \(error)")
             }
-            
+
         }
     }
-    
+
     private var actionItemsDecoded  : [MenuItemAction] = []
     @objc var actionItems: [[String:Any]] = [] {
         didSet{
@@ -49,7 +46,7 @@ class RNUITextView: UIView, UIGestureRecognizerDelegate, UITextViewDelegate   {
                 print("Failed to convert menuItems to JSON data")
                 return
             }
-            
+
             // Decode the JSON data
             let decoder = JSONDecoder()
             do {
@@ -60,41 +57,46 @@ class RNUITextView: UIView, UIGestureRecognizerDelegate, UITextViewDelegate   {
             }
         }
     }
-    
-    
+
+    @objc var onTextLayout: RCTDirectEventBlock?
+
+    @objc var onActionSelected: RCTDirectEventBlock?
+
+
+
     init(bridge: RCTBridge) {
         self.bridge = bridge
-        
+
         if #available(iOS 16.0, *) {
             textView = UITextView(usingTextLayoutManager: false)
         } else {
             textView = UITextView()
         }
-        
+
         // Disable scrolling
         textView.isScrollEnabled = false
         // Remove all the padding
         textView.textContainerInset = .zero
         textView.textContainer.lineFragmentPadding = 0
-        
+
         // Remove other properties
         textView.isEditable = false
         textView.backgroundColor = .clear
-        
+
         // Init
         super.init(frame: .zero)
         self.clipsToBounds = true
-        
+
         // Add the view
         addSubview(textView)
-        
+
         let longPressGestureRecognizer = UILongPressGestureRecognizer(
             target: self,
             action: #selector(callOnLongPress(_:))
         )
         longPressGestureRecognizer.delegate = self
         textView.addGestureRecognizer(longPressGestureRecognizer)
-        
+
         let pressGestureRecognzier = UITapGestureRecognizer(
             target: self,
             action: #selector(callOnPress(_:))
@@ -104,40 +106,38 @@ class RNUITextView: UIView, UIGestureRecognizerDelegate, UITextViewDelegate   {
         textView.addGestureRecognizer(pressGestureRecognzier)
         textView.delegate = self
     }
-    
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
+
     // Resolves some animation issues
     override func reactSetFrame(_ frame: CGRect) {
         UIView.performWithoutAnimation {
             super.reactSetFrame(frame)
         }
     }
-    
 
-    
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         return true
     }
-    
+
     @IBAction func callOnPress(_ sender: UITapGestureRecognizer) -> Void {
         self.handlePressIfNecessary(sender)
     }
-    
+
     @IBAction func callOnLongPress(_ sender: UILongPressGestureRecognizer) -> Void {
         if sender.state == .ended {
             self.handleLongPressIfNecessary(sender)
         }
     }
-    
+
     func setText(string: NSAttributedString, size: CGSize, numberOfLines: Int) -> Void {
         self.textView.frame.size = size
         self.textView.textContainer.maximumNumberOfLines = numberOfLines
         self.textView.attributedText = string
         self.textView.selectedTextRange = nil
-        
+
         if let onTextLayout = self.onTextLayout {
             var lines: [String] = []
             self.textView.layoutManager.enumerateLineFragments(
@@ -147,27 +147,27 @@ class RNUITextView: UIView, UIGestureRecognizerDelegate, UITextViewDelegate   {
                 let line = (self.textView.text as NSString).substring(with: characterRange)
                 lines.append(line)
             }
-            
+
             onTextLayout([
                 "lines": lines
             ])
         }
     }
-    
+
     func getLocationOfPress(_ sender: UIGestureRecognizer) -> CGPoint {
         return sender.location(in: self.textView)
     }
-    
+
     func getTouchChild(_ location: CGPoint) -> RNUITextViewChild? {
         let fullText = self.textView.attributedText.string
-        
+
         // Get the index of the char
         let charIndex = self.textView.layoutManager.characterIndex(
             for: location,
             in: textView.textContainer,
             fractionOfDistanceBetweenInsertionPoints: nil
         )
-        
+
         var currIndex = -1
         for child in self.reactSubviews() {
             guard let child = child as? RNUITextViewChild,
@@ -175,18 +175,18 @@ class RNUITextView: UIView, UIGestureRecognizerDelegate, UITextViewDelegate   {
             else {
                 continue
             }
-            
+
             // We need to account for grapheme length here, so use utf16.count
             currIndex += childText.utf16.count
-            
+
             if charIndex <= currIndex {
                 return child
             }
         }
-        
+
         return nil
     }
-    
+
     func handlePressIfNecessary(_ sender: UITapGestureRecognizer) -> Void {
         let location = getLocationOfPress(sender)
         guard let child = getTouchChild(location),
@@ -196,7 +196,7 @@ class RNUITextView: UIView, UIGestureRecognizerDelegate, UITextViewDelegate   {
         }
         onPress([:])
     }
-    
+
     func handleLongPressIfNecessary(_ sender: UILongPressGestureRecognizer) -> Void {
         let location = getLocationOfPress(sender)
         guard let child = getTouchChild(location),
@@ -206,7 +206,7 @@ class RNUITextView: UIView, UIGestureRecognizerDelegate, UITextViewDelegate   {
         }
         onLongPress([:])
     }
-    
+
     func getLineBreakMode() -> NSLineBreakMode {
         switch self.ellipsizeMode {
         case "head":
@@ -221,55 +221,62 @@ class RNUITextView: UIView, UIGestureRecognizerDelegate, UITextViewDelegate   {
             return .byTruncatingTail
         }
     }
-    
-    
+
     func textView(_ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
         let string = NSString(string: textView.text)
         let selectedText = string.substring(with: range)
-                
-        // Create UIAction from MenuItemAction
-        func createUIAction(from action: MenuItemAction) -> UIAction {
-            return UIAction(title: action.title) { _ in
-                if let onMenuItemPress = self.onMenuItemPress {
-                    onMenuItemPress([
-                        "text": string,
-                        "selectedText": selectedText,
-                        "actionName": action.action
-                    ])
-                }
-            }
+
+        if let onActionSelected = self.onActionSelected {
+            onActionSelected([
+                "text": string,
+                "selectedText": selectedText,
+                "actionName": "test"
+            ])
         }
-        
-        // Convert MenuItem to UIMenu
-        func createUIMenu(from menuItem: MenuItem) -> UIMenu {
-            let actions = menuItem.children.map { createUIAction(from: $0) }
-            return UIMenu(title: menuItem.title, children: actions)
+
+        /*
+        let action =  UIAction(title: "Explain") { _ in
+            print("menuItem2")
         }
-        
-        // Convert menuteItemsDecoded to UIMenu
-        let menus = menuteItemsDecoded.map { createUIMenu(from: $0) }
-        
-        // Add existing suggested actions except lookup
+        let customMenu = UIMenu(
+            title: "Actions",
+            children: [
+                UIAction(title: "Add Collection"  ) { _ in
+                    print("menuItem1")
+                    if let onActionSelected = self.onActionSelected {
+                        onActionSelected([
+                            "text": string,
+                            "selectedText": selectedText,
+                            "actionName": "menu1"
+                        ])
+                    }
+                },
+                UIAction(title: "Explain") { _ in
+                    print("menuItem2")
+                },
+
+            ]
+        )
+         */
         var filteredActions: [UIMenuElement] = []
-        var lookUp: UIMenuElement? = nil
-        
+        var lookUp : UIMenuElement? = nil
+
         filteredActions = suggestedActions.filter { action in
             // Check if the action is a menu and if its title is not "Learn"
             if let menu = action as? UIMenu, menu.identifier == .lookup {
-                lookUp = action
+                lookUp = action;
                 return false
             }
             return true
         }
-        
-        if let lookUp = lookUp {
-            filteredActions = [lookUp] + filteredActions
+
+        if((lookUp) != nil){
+            filteredActions = [lookUp!] + filteredActions
         }
-        
-        return UIMenu(children: menus + filteredActions)
+
+
+        return UIMenu( children:  filteredActions)
     }
-    
-    
 }
 
 struct MenuItem :  Codable{
