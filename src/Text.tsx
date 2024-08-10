@@ -1,4 +1,5 @@
 import React from 'react'
+import {NativeSyntheticEvent} from 'react-native'
 import {
   Platform,
   requireNativeComponent,
@@ -123,6 +124,29 @@ function UITextViewChild({
   }
 }
 
+export type MenuItemPressEvent = {
+  actionName: string
+  selectedText: string
+  text: string
+}
+
+export type MenuAction = {
+  title: string
+  action: string
+}
+
+export type MenuItems = {
+  title: string
+  children?: Array<MenuAction>
+}
+
+export type MenuProps = {
+  onMenuItemPress?:
+    | ((event: NativeSyntheticEvent<MenuItemPressEvent>) => void)
+    | undefined
+  menuItems?: Array<MenuItems> | undefined
+}
+
 function UITextViewInner(
   props: TextProps & {
     uiTextView?: boolean
@@ -139,7 +163,9 @@ function UITextViewInner(
   return <UITextViewChild {...props} />
 }
 
-export function UITextView(props: TextProps & {uiTextView?: boolean}) {
+export function UITextView(
+  props: TextProps & MenuProps & {uiTextView?: boolean}
+) {
   if (Platform.OS !== 'ios') {
     return <RNText {...props} />
   }
